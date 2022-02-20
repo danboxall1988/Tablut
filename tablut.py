@@ -78,7 +78,6 @@ class Board:
 		self.setup_squares()
 		self._pieces = [[None] * 9 for i in range(9)]
 		self.setup_pieces()
-		#self.square_rect = self.light_square.get_rect(topleft = (0,0))
 	
 	def setup_pieces(self):
 		dark = "pawnB2.png"
@@ -194,37 +193,28 @@ class Board:
 			
 	def check_for_kills(self, player, row, col):
 		typ = self._pieces[row][col].type
-		deaths = []
 		# check for pieces to the left
 		if col >= 2: # prevents IndexError
-			if self._pieces[row][col-1]: 
-				if self._pieces[row][col-2]:
-					if self._pieces[row][col-1].type != typ:
-						if self._pieces[row][col-2].type == typ:
-							deaths.append((row, col-1))
+			r = self._pieces[row]
+			c1, c2 = r[col-1], r[col-2]
+			if c1 and c2 and c1.type != typ and c2.type == typ:
+				yield (row, col-1)
 		# check for kills to the right
 		if col <= 6:
-			if self._pieces[row][col+1]:
-				if self._pieces[row][col+2]:
-					if self._pieces[row][col+1].type != typ:
-						if self._pieces[row][col+2].type == typ:
-							deaths.append((row, col+1))
+			r = self._pieces[row]
+			c1, c2 = r[col+1], r[col+2]
+			if c1 and c2 and c1.type != typ and c2.type == typ:
+				yield (row, col+1)
 		# check for kills above
 		if row >= 2:
-			if self._pieces[row-1][col]:
-				if self._pieces[row-2][col]:
-					if self._pieces[row-1][col].type != typ:
-						if self._pieces[row-2][col].type == typ:
-							deaths.append((row-1, col))
+			r1, r2 = self._pieces[row-1][col], self._pieces[row-2][col]
+			if r1 and r2 and r1.type != typ and r2.type == typ:
+				yield (row-1, col)
 		# check for kills below
 		if row <=6:
-			if self._pieces[row+1][col]:
-				if self._pieces[row+2][col]:
-					if self._pieces[row+1][col].type != typ:
-						if self._pieces[row+2][col].type == typ:
-							deaths.append((row+1, col))
-		return deaths
-				
+			r1, r2 = self._pieces[row+1][col], self._pieces[row+2][col]
+			if r1 and r2 and r1.type != typ and r2.type == typ:
+				yield (row+1, col)
 							
 	def draw(self):
 		for row in range(9):
@@ -266,22 +256,22 @@ class Control:
 				row = pos[1] // SQUARE_SIZE
 				col = pos[0] // SQUARE_SIZE
 				if self.square_highlighted:
-					dir = self.board.check_path(self.highlight_coords, (row, col))
-					if dir:
+					dir_ = self.board.check_path(self.highlight_coords, (row, col))
+					if dir_:
 						square = squares[row][col]
-						self.selected_piece.move(self.board, square, dir)
+						self.selected_piece.move(self.board, square, dir_)
 						coords = self.highlight_coords
 						pieces[row][col] = pieces[coords[0]][coords[1]]
 						pieces[coords[0]][coords[1]] = None
 						# check for and erase killed pieces
-						for dead in self.board.check_for_kills(self.player, row, col):
-							pieces[dead[0]][dead[1]] = None
+						for row, col in set(self.board.check_for_kills(self.player, row, col)):
+							pieces[row][col] = None
 						self.switch_player()
 					self.square_highlighted = False
 					self.highlight_coords = None
 				else:
 					piece = pieces[row][col]
-					if piece is not None and piece.color == self.player.color:
+					if piece and piece.color == self.player.color:
 						self.square_highlighted = True
 						self.highlight_coords = (row, col)
 						self.selected_piece = piece
